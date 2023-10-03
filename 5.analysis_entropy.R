@@ -36,7 +36,7 @@ th <- opt$th
 
 # rc <- 2
 # numbin <- 10
-# class <- "homo"
+# class <- "hetero"
 
 # sel <- "win"
 # th <- 5
@@ -101,7 +101,7 @@ for (sel in levels(res$type)) {
 
     # filtering based on the annotaiton of cell type
     f_sel_res <- res %>%
-        filter(type == sel) %>%
+        filter(type == sel, !is.na(entropy)) %>%
         filter(celltype %in% sel_res$celltype) %>%
         mutate(th = th) %>%
         mutate(class = class)
