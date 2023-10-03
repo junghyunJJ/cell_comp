@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --job-name=prep
+#SBATCH -t 48:00:00
+#SBATCH --mem=256G
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=junghyun.jung@cshs.org
+#SBATCH --out=1.prep.out
+
+source /common/jungj2/miniconda3/etc/profile.d/conda.sh
+conda activate scanpy
+
+python 1.prep.py

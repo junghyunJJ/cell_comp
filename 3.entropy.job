@@ -1,0 +1,21 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH --job-name=3.entropy
+#SBATCH -t 12:00:00
+#SBATCH --mem=16G
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=junghyun.jung@cshs.org
+#SBATCH --array=1-512
+#SBATCH --out=log/3.entropy-%A_%a
+
+source /common/jungj2/miniconda3/etc/profile.d/conda.sh
+conda activate r_env
+
+Rscript 3.entropy.R --analysis window --rc 2
+Rscript 3.entropy.R --analysis window --rc 3
+Rscript 3.entropy.R --analysis window --rc 4
+Rscript 3.entropy.R --analysis window --rc 5
+
+Rscript 3.entropy.R --analysis tissue

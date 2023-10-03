@@ -1,0 +1,26 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --job-name=5.analysis_entropy
+#SBATCH -t 12:00:00
+#SBATCH --mem=96G
+#SBATCH --mail-type=ALL
+#SBATCH --mail-user=junghyun.jung@cshs.org
+#SBATCH --out=log/5.analysis_entropy-%A_%a
+
+source /common/jungj2/miniconda3/etc/profile.d/conda.sh
+conda activate r_env
+
+
+Rscript 5.analysis_entropy.R --rc 2 --class homo --th 20
+Rscript 5.analysis_entropy.R --rc 2 --class hetero --th 20
+
+Rscript 5.analysis_entropy.R --rc 3 --class homo --th 20
+Rscript 5.analysis_entropy.R --rc 3 --class hetero --th 20
+
+Rscript 5.analysis_entropy.R --rc 4 --class homo --th 20
+Rscript 5.analysis_entropy.R --rc 4 --class hetero --th 20
+
+Rscript 5.analysis_entropy.R --rc 5 --class homo --th 20
+Rscript 5.analysis_entropy.R --rc 5 --class hetero --th 20
