@@ -7,20 +7,19 @@
 #SBATCH --mem=96G
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=junghyun.jung@cshs.org
-#SBATCH --out=log/5.analysis_entropy-%A_%a
+#SBATCH --out=log/5.analysis_entropy.out
 
 source /common/jungj2/miniconda3/etc/profile.d/conda.sh
 conda activate r_env
 
+Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --class homo --th 5
+Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --class hetero --th 5
 
-Rscript 5.analysis_entropy.R --rc 2 --class homo --th 20
-Rscript 5.analysis_entropy.R --rc 2 --class hetero --th 20
+Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --class homo --th 5
+Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --class hetero --th 5
 
-Rscript 5.analysis_entropy.R --rc 3 --class homo --th 20
-Rscript 5.analysis_entropy.R --rc 3 --class hetero --th 20
+Rscript 5.analysis_entropy.R --rc 2 --numbin 15 --class homo --th 5
+Rscript 5.analysis_entropy.R --rc 2 --numbin 15 --class hetero --th 5
 
-Rscript 5.analysis_entropy.R --rc 4 --class homo --th 20
-Rscript 5.analysis_entropy.R --rc 4 --class hetero --th 20
-
-Rscript 5.analysis_entropy.R --rc 5 --class homo --th 20
-Rscript 5.analysis_entropy.R --rc 5 --class hetero --th 20
+Rscript 5.analysis_entropy.R --rc 2 --numbin 20 --class homo --th 5
+Rscript 5.analysis_entropy.R --rc 2 --numbin 20 --class hetero --th 5
