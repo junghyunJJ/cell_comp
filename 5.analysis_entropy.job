@@ -12,11 +12,21 @@
 source /common/jungj2/miniconda3/etc/profile.d/conda.sh
 conda activate r_env
 
-Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --class homo --th 5
-Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --class hetero --th 5
+Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --th 5 --class homo 
+Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --th 5 --class hetero 
 
-# Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --class homo --th 5
-# Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --class hetero --th 5
+Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --th 10 --class homo 
+Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --th 10 --class hetero 
 
-# Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --class homo --th 10
-# Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --class hetero --th 10
+Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --th 20 --class homo 
+Rscript 5.analysis_entropy.R --rc 2 --numbin 5 --th 20 --class hetero 
+
+
+Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --th 5 --class homo 
+Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --th 5 --class hetero 
+
+Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --th 10 --class homo 
+Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --th 10 --class hetero 
+
+Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --th 20 --class homo 
+Rscript 5.analysis_entropy.R --rc 2 --numbin 10 --th 20 --class hetero 

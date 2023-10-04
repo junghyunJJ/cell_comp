@@ -15,6 +15,10 @@ option_list <- list(
     make_option("--numbin",
         action = "store", default = 10, type = "integer",
         help = "numbin for cal entropy"
+    ),
+    make_option("--th",
+        action = "store", default = 10, type = "integer",
+        help = "th for cal entropy"
     )
 )
 opt <- parse_args(OptionParser(option_list = option_list))
@@ -41,7 +45,7 @@ all_type <- colnames(mosta)[c(6, 12:ncol(mosta))]
 sel <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 (sel_timepoint <- all[sel, 1] %>% as.character())
 (sel_type <- all[sel, 2] %>% as.character())
-#sel <- 1; sel_timepoint <- "E9.5"; sel_type <- "proliferation_plos";z <- 1;sel_section <- "E1S1";rc<-2;numbin<-10
+#sel <- 1; sel_timepoint <- "E16.5"; sel_type <- "proliferation_plos";z <- 1;sel_section <- "E1S1";rc<-2;numbin<-10
 
 sel_mosta <- mosta %>% 
     filter(timepoint == sel_timepoint)
@@ -66,21 +70,24 @@ res <- lapply(section, function(sel_section) {
     dat <- dat %>%
         rename(ori_value = value) %>%
         mutate(value = trans_dat(ori_value))
-
+    
+    # cal entropy using whole tissue
+    # res_entropy_tisse <- cal_entropy_whole_tissue(dat, celltype, numbin = opt$numbin, unit = "log2")
+    
     # matrix data based on the x and y coordinate
     matdat <- make_mat(dat)
     
     # cal entropy based on the specific window (default = 2)
     s_matdat <- split_mat(matdat, r = opt$rc, c = opt$rc)
-    celltype_comb <- make_celltype_comb(unique(dat$annotation), includehomo = TRUE, exclude = NULL)
+    celltype_comb <- make_celltype_comb(s_matdat, th = opt$th, includehomo = TRUE, exclude = NULL)    
     res_entropy <- cal_entropy(s_matdat, celltype_comb, numbin = opt$numbin, unit = "log2")
     
     # summary of data
     res_entropy %>%
-        mutate(timepoint = get("sel_timepoint")) %>%
-        mutate(section = get("sel_section")) %>%
-        mutate(type = get("sel_type"))
+        mutate(timepoint = sel_timepoint) %>%
+        mutate(section = sel_section) %>%
+        mutate(type = sel_type)
     
 }) %>% rbindlist()
 
-saveRDS(res, str_glue("res/res_entropy/{sel_type}_{sel_timepoint}_{opt$rc}_{opt$numbin}.rds"))
+saveRDS(res, str_glue("res/res_entropy/{sel_type}_{sel_timepoint}_{opt$rc}_{opt$th}_{opt$numbin}.rds"))

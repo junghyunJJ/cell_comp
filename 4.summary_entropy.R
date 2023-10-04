@@ -55,20 +55,24 @@ library(tidytext)
 
 
 #################################################################################
-### Shannon entropy of cell marker score ########################################
+### summary of emtropy resutls ##################################################
 #################################################################################
 
 
-cr <- 2
-lapply(c(5, 10, 15, 20), function(numbin) {
-    cat(str_glue("{cr}_{numbin}"), "\n")
-    selfiles <- list.files("res/res_entropy/", full.names = TRUE, pattern = str_glue("{cr}_{numbin}.rds"))
+rc <- 2
+lapply(c(5, 10, 20), function(th) {
+    lapply(c(5, 10), function(numbin) {
+        cat(str_glue("rc{rc}_th{th}_numbin{numbin}"), "\n")
 
-    res <- pbmcapply::pbmclapply(selfiles, function(sel) {
-        readRDS(sel)
-    }, mc.cores = 20) %>% rbindlist()
-    res$cr <- cr
-    res$numbin <- numbin
-    
-    saveRDS(res, str_glue("res/summary_entropy_{cr}_{numbin}.rds"))
+        selfiles <- list.files("res/res_entropy/", full.names = TRUE, pattern = str_glue("{rc}_{th}_{numbin}.rds"))
+
+        res <- pbmcapply::pbmclapply(selfiles, function(sel) {
+            readRDS(sel)
+        }, mc.cores = 20) %>% rbindlist()
+        res$rc <- rc
+        res$th <- th
+        res$numbin <- numbin
+
+        saveRDS(res, str_glue("res/summary_entropy_{rc}_{th}_{numbin}.rds"))
+    })
 })

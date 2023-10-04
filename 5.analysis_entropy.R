@@ -13,6 +13,10 @@ option_list <- list(
         action = "store", default = 2, type = "integer",
         help = "window width for calculate entropy"
     ),
+    make_option("--th",
+        action = "store", default = 10, type = "integer",
+        help = "th for cal entropy"
+    ),
     make_option("--numbin",
         action = "store", default = 10, type = "integer",
         help = "numbin for cal entropy"
@@ -20,29 +24,27 @@ option_list <- list(
     make_option("--class",
         action = "store", default = NULL, type = "character",
         help = "homo? hetero?"
-    ),
-    make_option("--th",
-        action = "store", default = NULL, type = "integer",
-        help = "th for vislization"
     )
 )
 
 opt <- parse_args(OptionParser(option_list = option_list))
 
 rc <- opt$rc
-numbin <- opt$numbin
-class <- opt$class
 th <- opt$th
+numbin <- opt$numbin
+
+class <- opt$class
 
 # rc <- 2
+# th <- 10
 # numbin <- 10
-# class <- "hetero"
 
+# class <- "hetero"
 # sel <- "win"
-# th <- 5
+
 
 # read entropy results
-rawres <- readRDS(str_glue("res/summary_entropy_{rc}_{numbin}.rds"))
+rawres <- readRDS(str_glue("res/summary_entropy_{rc}_{th}_{numbin}.rds"))
 
 res <- rawres %>%
     filter(type %in% c(
@@ -74,47 +76,28 @@ summary_res <- list()
 
 for (sel in levels(res$type)) {
 
-    sel_names <- str_glue(rc, "_", numbin, "_", sel)
+    sel_names <- str_glue(rc, "_", th, "_", numbin, "_", sel)
     cat(sel_names, "\n")
-
-    sel_res <- res %>%
-        filter(type == sel, !is.na(entropy)) %>%
-        group_by(timepoint, type, celltype) %>%
-        summarise(n = n(), median_entropy = median(entropy), .groups = "keep") %>%
-        arrange(desc(n)) %>% 
-        ungroup() %>%
-        filter(n > th) # NOTE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         
     # homo? or hetero?
     if (class == "homo") {
-        sel_res <- sel_res %>%
-            # filter(grepl(";", celltype)) %>%
-            # filter(str_count(celltype, ";") == 1) %>%
-            filter(!grepl(";", celltype)) %>%
-            arrange(desc(median_entropy))
+        sel_res <- res %>%
+            filter(!grepl(";", celltype))
     } else {
-        sel_res <- sel_res %>%
-            filter(grepl(";", celltype)) %>%
-            filter(str_count(celltype, ";") == 1) %>%
-            arrange(desc(median_entropy))
+        sel_res <- res %>%
+            filter(grepl(";", celltype))
     }
 
-    # filtering based on the annotaiton of cell type
-    f_sel_res <- res %>%
-        filter(type == sel, !is.na(entropy)) %>%
-        filter(celltype %in% sel_res$celltype) %>%
-        mutate(th = th) %>%
-        mutate(class = class)
-    summary_res <- append(summary_res, list(f_sel_res))
+    summary_res <- append(summary_res, list(sel_res))
 
     # boxplot color
-    if (sel %in% c("ratio", "winlose_diff", "proapop_diff", "winapop_diff", "winloseapop_diff", "win", "lose")) {
+    if (sel %in% c("ratio", "winlose_diff", "winapop_diff", "winloseapop_diff", "win", "lose")) {
         set_col <- c("white", "firebrick3")
     } else {
         set_col <- c("white", "royalblue3")
     }
 
-    ggplot(f_sel_res, aes(entropy, reorder_within(celltype, entropy, timepoint, median), fill = col)) +
+    ggplot(sel_res, aes(entropy, reorder_within(celltype, entropy, timepoint, median), fill = col)) +
         theme_bw() +
         geom_boxplot() +
         scale_fill_manual(values = set_col) +

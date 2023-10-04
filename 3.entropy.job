@@ -13,7 +13,11 @@
 source /common/jungj2/miniconda3/etc/profile.d/conda.sh
 conda activate r_env
 
-Rscript 3.entropy.R --rc 2 --numbin 5
-Rscript 3.entropy.R --rc 2 --numbin 10
-Rscript 3.entropy.R --rc 2 --numbin 15
-Rscript 3.entropy.R --rc 2 --numbin 20
+# Rscript 3.entropy.R --rc 2 --numbin 5 --th 5
+# Rscript 3.entropy.R --rc 2 --numbin 10 --th 5
+
+# Rscript 3.entropy.R --rc 2 --numbin 5 --th 10
+# Rscript 3.entropy.R --rc 2 --numbin 10 --th 10
+
+Rscript 3.entropy.R --rc 2 --numbin 5 --th 20
+Rscript 3.entropy.R --rc 2 --numbin 10 --th 20
