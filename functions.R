@@ -98,25 +98,44 @@ split_mat <- function(matdat, r = 2, c = 2, complete = FALSE) {
 }
 
 # make cell type com
-make_celltype_comb <- function(celltype, includehomo = FALSE, exclude = NULL) {
+# make_celltype_comb <- function(celltype, includehomo = FALSE, exclude = NULL) {
+#     # remove specific celltype
+#     if (!is.null(exclude)) {
+#         celltype <- celltype[!celltype %in% exclude]
+#     }
+
+#     res_comb <- apply(expand.grid(celltype, celltype), 1, function(ss) {
+#         ss %>%
+#             as.vector() %>%
+#             unique() %>%
+#             sort() %>%
+#             paste(collapse = ";")
+#     }) %>% unique()
+
+#     # if you want to include homo
+#     if (!includehomo) {
+#         res_comb <- grep(";", res_comb, value = TRUE)
+#     }
+#     return(res_comb)
+# }
+
+make_celltype_comb <- function(s_matdat, th = 10, includehomo = TRUE, exclude = NULL) {
+    celltype_comb <- s_matdat %>%
+        names() %>%
+        table() %>%
+        sort()
+    
     # remove specific celltype
     if (!is.null(exclude)) {
-        celltype <- celltype[!celltype %in% exclude]
+        celltype_comb <- celltype_comb[!grepl(paste(exclude, collapse = "|"), names(celltype_comb))]        
     }
 
-    res_comb <- apply(expand.grid(celltype, celltype), 1, function(ss) {
-        ss %>%
-            as.vector() %>%
-            unique() %>%
-            sort() %>%
-            paste(collapse = ";")
-    }) %>% unique()
-
-    # if you want to include homo
+    celltype_comb <- celltype_comb[celltype_comb > th] %>% names
+    celltype_comb <- celltype_comb[celltype_comb != ""]
     if (!includehomo) {
-        res_comb <- grep(";", res_comb, value = TRUE)
+        celltype_comb <- grep(";", celltype_comb, value = TRUE)
     }
-    return(res_comb)
+    return(celltype_comb)
 }
 
 # cal entropy value using discretize results
@@ -126,15 +145,23 @@ cal_entropy_value <- function(dat, numbin = 10, unit = "log2") {
 }
 
 # cal entropy based on location (i.e., edge of the tissue)
+cal_entropy_whole_tissue <- function(dat, celltype, numbin = 10, unit = "log2") {
+    res_entropy <- lapply(celltype, function(sel) {
+        sel_values <- dat %>%
+            filter(annotation == sel) %>%
+            select(value) %>%
+            pull()
+        cal_entropy_value(sel_values, numbin = numbin, unit = unit)
+    }) %>% unlist
+    return(data.frame(celltype = celltype, entropy = res_entropy))
+}
+
+# cal entropy based on location (i.e., edge of the tissue)
 cal_entropy <- function(s_matdat, celltype_comb, numbin = 10, unit = "log2") {
     res_entropy <- lapply(celltype_comb, function(sel_comb) {
-        sel_location <- s_matdat[names(s_matdat) == sel_comb] %>% unlist()
-        if (is.null(sel_location)) {
-            NA
-        } else {
-            sel_location <- sel_location[!is.na(sel_location)]
-            cal_entropy_value(sel_location, numbin = numbin, unit = unit)
-        }
+        sel_location <- s_matdat[names(s_matdat) == sel_comb] %>% unlist()      
+        sel_location <- sel_location[!is.na(sel_location)]
+        cal_entropy_value(sel_location, numbin = numbin, unit = unit)
     }) %>% unlist
     return(data.frame(celltype = celltype_comb, entropy = res_entropy))
 }
