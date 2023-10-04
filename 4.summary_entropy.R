@@ -58,8 +58,8 @@ library(tidytext)
 ### summary of emtropy resutls ##################################################
 #################################################################################
 
-
 rc <- 2
+# th <- 10; numbin <- 10; rc <- 2;
 lapply(c(5, 10, 20), function(th) {
     lapply(c(5, 10), function(numbin) {
         cat(str_glue("rc{rc}_th{th}_numbin{numbin}"), "\n")

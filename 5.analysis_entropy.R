@@ -76,15 +76,17 @@ summary_res <- list()
 
 for (sel in levels(res$type)) {
 
-    sel_names <- str_glue(rc, "_", th, "_", numbin, "_", sel)
+    sel_names <- str_glue("rc{rc}_th{th}_numbin{numbin}_{sel}")
     cat(sel_names, "\n")
+    
+    f_res <- res %>% filter(type == sel)
         
     # homo? or hetero?
     if (class == "homo") {
-        sel_res <- res %>%
+        sel_res <- f_res %>%
             filter(!grepl(";", celltype))
     } else {
-        sel_res <- res %>%
+        sel_res <- f_res %>%
             filter(grepl(";", celltype))
     }
 
@@ -105,10 +107,10 @@ for (sel in levels(res$type)) {
         theme(legend.position = "none")
 
     if (class == "homo") {
-        ggsave(str_glue("fig/entropy/entropy_{sel}_{rc}_{numbin}_{class}_{th}.png"), width = 10, height = 20, units = "in", bg = "white")
+        ggsave(str_glue("fig/entropy/entropy_{sel}_rc{rc}_th{th}_numbin{numbin}_{class}.png"), width = 10, height = 20, units = "in", bg = "white")
     } else {
-        ggsave(str_glue("fig/entropy/entropy_{sel}_{rc}_{numbin}_{class}_{th}.png"), width = 15, height = 40, units = "in", bg = "white")
+        ggsave(str_glue("fig/entropy/entropy_{sel}_rc{rc}_th{th}_numbin{numbin}_{class}.png"), width = 15, height = 50, units = "in", bg = "white", limitsize = TRUE)
     }
 }
 
-saveRDS(rbindlist(summary_res), str_glue("data/entropy/entropy_{rc}_{numbin}_{class}_{th}.rds"))
+saveRDS(rbindlist(summary_res), str_glue("data/entropy/entropy_{rc}_{th}_{numbin}_{class}.rds"))

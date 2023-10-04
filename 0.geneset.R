@@ -7,34 +7,34 @@ library(openxlsx)
 
 convert_mouse_to_human <- function(gene_list) { 
     output <- c()
-    mouse_human_genes <- read.csv("https://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt",sep="\t")
+    mouse_human_genes <- read.csv("https://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt", sep = "\t")
 
     for (gene in gene_list) {
-        class_key <- (mouse_human_genes %>% filter(Symbol == gene & Common.Organism.Name == "mouse, laboratory"))[['DB.Class.Key']]
-        if( !identical(class_key, integer(0)) ) {
-            human_genes = (mouse_human_genes %>% filter(DB.Class.Key == class_key & Common.Organism.Name=="human"))[,"Symbol"]
-            for(human_gene in human_genes) {
-            output = rbind(c(gene, human_gene), output)
+        class_key <- (mouse_human_genes %>% filter(Symbol == gene & Common.Organism.Name == "mouse, laboratory"))[["DB.Class.Key"]]
+        if (!identical(class_key, integer(0))) {
+            human_genes <- (mouse_human_genes %>% filter(DB.Class.Key == class_key & Common.Organism.Name == "human"))[, "Symbol"]
+            for (human_gene in human_genes) {
+                output <- rbind(c(gene, human_gene), output)
             }
         }
     }
-    return (output)
+    return(output)
 }
 
 convert_human_to_mouse <- function(gene_list) {
-  output = c()
-  mouse_human_genes = read.csv("https://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt",sep="\t")
-  
-  for(gene in gene_list) {
-    class_key = (mouse_human_genes %>% filter(Symbol == gene & Common.Organism.Name == "human"))[['DB.Class.Key']]
-    if( !identical(class_key, integer(0)) ) {
-      human_genes = (mouse_human_genes %>% filter(DB.Class.Key == class_key & Common.Organism.Name=="mouse, laboratory"))[,"Symbol"]
-      for(human_gene in human_genes) {
-        output = rbind(c(gene, human_gene), output)
-      }
+    output <- c()
+    mouse_human_genes <- read.csv("https://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt", sep = "\t")
+
+    for (gene in gene_list) {
+        class_key <- (mouse_human_genes %>% filter(Symbol == gene & Common.Organism.Name == "human"))[["DB.Class.Key"]]
+        if (!identical(class_key, integer(0))) {
+            human_genes <- (mouse_human_genes %>% filter(DB.Class.Key == class_key & Common.Organism.Name == "mouse, laboratory"))[, "Symbol"]
+            for (human_gene in human_genes) {
+                output <- rbind(c(gene, human_gene), output)
+            }
+        }
     }
-  }
-  return (output)
+    return(output)
 }
 
 
@@ -84,7 +84,7 @@ intersect(apoptosis_mouse, apoptosis_moscot_mouse) %>% ll # 21
 # NOTE! we onlt focused on the Experimental evidence codes
 # https://geneontology.org/docs/guide-go-evidence-codes/
 
-sel_gocode <- c("EXP","IDA","IPI","IMP","IGI","IEP","HTP","HDA","HMP","HGI","HEP")
+sel_gocode <- c("EXP", "IDA", "IPI", "IMP", "IGI", "IEP", "HTP", "HDA", "HMP", "HGI", "HEP")
 
 # Proliferation
 all_GO0008283_mouse_go <- read.xlsx("data/GO_term_summary_20230907_023720.xlsx") %>% as_tibble()
@@ -98,7 +98,7 @@ proliferation_mouse_go
 
 # 2. msigdb
 all_msigdb <- jjutil::read.gmt("/home/jungj2/tools/msigdb/msigdb_v2023.1.Mm_files_to_download_locally/msigdb_v2023.1.Mm_GMTs/m5.go.bp.v2023.1.Mm.symbols.gmt")
-tmp_msigdb <- grep("GOBP_.*_PROLIFERATION$",names(all_msigdb), value = T)
+tmp_msigdb <- grep("GOBP_.*_PROLIFERATION$", names(all_msigdb), value = TRUE)
 proliferation_msigdb <- tmp_msigdb[-grep("GOBP_NEGATIVE_REGULATION_OF_|GOBP_POSITIVE_REGULATION_OF_|GOBP_REGULATION_OF_", tmp_msigdb)] %>% sort
 
 proliferation_mouse_msigdb <- all_msigdb[names(all_msigdb) %in% proliferation_msigdb] %>% unlist %>% unique %>% sort
@@ -121,8 +121,8 @@ writeLines(proliferation_mouse_plos, "data/proliferation_mouse_plos.txt")
 #################################################################
 # https://search.clinicalgenome.org/kb/downloads
 
-raw_clinGen <- fread("data/Clingen-Curation-Activity-Summary-Report-2023-09-07.csv",skip = 3)
-raw_clinGen$haploinsufficiency_score <- sub("(.*) \\([0-9]+/[0-9]+/[0-9]+\\)$", "\\1",raw_clinGen$dosage_haploinsufficiency_assertion)
+raw_clinGen <- fread("data/Clingen-Curation-Activity-Summary-Report-2023-09-07.csv", skip = 3)
+raw_clinGen$haploinsufficiency_score <- sub("(.*) \\([0-9]+/[0-9]+/[0-9]+\\)$", "\\1", raw_clinGen$dosage_haploinsufficiency_assertion)
 raw_clinGen$haploinsufficiency_score %>% table %>% data.frame
 
 haploinsufficiency_gene <- raw_clinGen %>% 
@@ -130,7 +130,7 @@ haploinsufficiency_gene <- raw_clinGen %>%
     select(gene_symbol) %>% pull %>% unique %>% sort
 haploinsufficiency_gene %>% ll
 
-haploinsufficiency_mouse <- convert_human_to_mouse(haploinsufficiency_gene)[,2] %>% unique %>% sort
+haploinsufficiency_mouse <- convert_human_to_mouse(haploinsufficiency_gene)[, 2] %>% unique %>% sort
 writeLines(haploinsufficiency_mouse, "data/haploinsufficiency_mouse.txt")
 
 
