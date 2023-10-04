@@ -72,7 +72,3 @@ lapply(c(5, 10, 15, 20), function(numbin) {
     
     saveRDS(res, str_glue("res/summary_entropy_{cr}_{numbin}.rds"))
 })
-
-
-
-

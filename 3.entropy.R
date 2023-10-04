@@ -72,7 +72,7 @@ res <- lapply(section, function(sel_section) {
     
     # cal entropy based on the specific window (default = 2)
     s_matdat <- split_mat(matdat, r = opt$rc, c = opt$rc)
-    celltype_comb <- make_celltype_comb(unique(dat$annotation), includehomo = TRUE)        
+    celltype_comb <- make_celltype_comb(unique(dat$annotation), includehomo = TRUE, exclude = NULL)
     res_entropy <- cal_entropy(s_matdat, celltype_comb, numbin = opt$numbin, unit = "log2")
     
     # summary of data

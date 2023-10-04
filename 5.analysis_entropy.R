@@ -42,7 +42,7 @@ th <- opt$th
 # th <- 5
 
 # read entropy results
-rawres <- readRDS(str_glue("res/summary_entropy_2_{numbin}.rds"))
+rawres <- readRDS(str_glue("res/summary_entropy_{rc}_{numbin}.rds"))
 
 res <- rawres %>%
     filter(type %in% c(
@@ -114,7 +114,7 @@ for (sel in levels(res$type)) {
         set_col <- c("white", "royalblue3")
     }
 
-    gg_sel_res <- ggplot(f_sel_res, aes(entropy, reorder_within(celltype, entropy, timepoint, median), fill = col)) +
+    ggplot(f_sel_res, aes(entropy, reorder_within(celltype, entropy, timepoint, median), fill = col)) +
         theme_bw() +
         geom_boxplot() +
         scale_fill_manual(values = set_col) +
@@ -122,10 +122,10 @@ for (sel in levels(res$type)) {
         theme(legend.position = "none")
 
     if (class == "homo") {
-        ggsave(str_glue("fig/entropy/entropy_window_{rc}_{sel}_{class}_{th}.png"), width = 15, height = 20, units = "in", bg = "white")
+        ggsave(str_glue("fig/entropy/entropy_{sel}_{rc}_{numbin}_{class}_{th}.png"), width = 10, height = 20, units = "in", bg = "white")
     } else {
-        ggsave(str_glue("fig/entropy/entropy_window_{rc}_{sel}_{class}_{th}.png"), width = 15, height = 40, units = "in", bg = "white")
+        ggsave(str_glue("fig/entropy/entropy_{sel}_{rc}_{numbin}_{class}_{th}.png"), width = 15, height = 40, units = "in", bg = "white")
     }
 }
 
-saveRDS(rbindlist(summary_res), str_glue("data/entropy/entropy_window_{rc}_{class}_{th}.rds"))
+saveRDS(rbindlist(summary_res), str_glue("data/entropy/entropy_{rc}_{numbin}_{class}_{th}.rds"))
