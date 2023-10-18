@@ -7,51 +7,7 @@ library(jjutil)
 library(openxlsx)
 
 library(Seurat)
-
-
-# cal_ratio function from Patrick
-cal_ratio <- function(norm_counts, win, lose) {
-    weight <- rep(1, length(c(win, lose)))
-    names(weight) <- c(win, lose)
-    
-    # weight for more important genes
-    weight[names(weight) %in% c("Myc", "Mycn", "Ras", "Egfr")] <- 2
-    weight[names(weight) == "Cacfd"] <- 3
-
-    win_counts <- norm_counts[rownames(norm_counts) %in% win, ]
-    win_counts %>% dim
-    lose_counts <- norm_counts[rownames(norm_counts) %in% lose, ]
-    lose_counts %>% dim
-
-    for (i in seq_along(weight)) {
-        if (names(weight)[i] %in% rownames(win_counts)) {
-            win_counts[rownames(win_counts) == names(weight)[i], ] <- win_counts[rownames(win_counts) == names(weight)[i], ] * weight[i]
-        } else if (names(weight)[i] %in% rownames(lose_counts)) {
-            lose_counts[rownames(lose_counts) == names(weight)[i], ] <- lose_counts[rownames(lose_counts) == names(weight)[i], ] * weight[i]
-        } else {
-            next
-        }
-    }
-
-    win_counts <- colMeans(win_counts)
-    lose_counts <- colMeans(lose_counts)
-
-    ratio <- (win_counts + 1) / (lose_counts + 1) - 1 # NOTE!!!! any reference?? or related papers? -> NO!
-    breaks <- cut(ratio, breaks = 7, include.lowest = TRUE)
-    return(list(ratio = ratio, breaks = breaks))
-}
-
-inner_cal_entropy_freq <- function(freq) {
-    h <- -sum(ifelse(freq > 0, freq * log2(freq), 0))
-    return(h)
-}
-
-cal_entropy_freq <- function(exp) {
-    exp <- exp[apply(is.na(exp), 1, sum) == 0, ]
-    probs <- t(t(exp) / apply(exp, 2, sum))
-    entropy <- apply(probs, 2, inner_cal_entropy_freq)
-    return(entropy)
-}
+source("functions.R")
 
 sel <- as.numeric(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 # sel <- 1
@@ -118,7 +74,7 @@ dat
 # }
 
 
-# 2. analysis
+# 2. analysis ( we ONLY need the NormalizeData step at this point)
 dat <- NormalizeData(dat, verbose = FALSE)
 dat <- FindVariableFeatures(dat, verbose = FALSE)
 dat <- ScaleData(dat, features = rownames(dat), verbose = FALSE)
@@ -128,27 +84,65 @@ dat <- FindClusters(dat, verbose = FALSE)
 dat
 
 
-# 3. cal gene score
+# 3. cal gene score and entropy
 # 3-1. cal gene score using comp gene and hallmark
 
-geneset <- readRDS("data/genesets.rds")
+geneset <- readRDS("data/genesets.rds")[1:2]
 for (i in seq_len(length(geneset))) {
     dat <- AddModuleScore(
         dat,
         features = geneset[i], 
-        ctrl = length(geneset[i]), 
-        name = names(geneset[i])
+        ctrl = length(geneset[[i]]) / 3, 
+        name = paste0("ori_", names(geneset[i]))
     ) 
 }
 colnames(dat@meta.data) <- sub("(.*)1$", "\\1", colnames(dat@meta.data))
 
-# diff values 
+# 3-2. cal entropy
+for (i in seq_len(length(geneset))) {
+
+    dat <- oldcal_genescore(
+        seurat_obj = dat,
+        geneset = geneset[[i]], 
+        background = round(length(geneset[[i]]) / 3),
+        name = paste0("old_", names(geneset[i]))
+    ) 
+    dat <- cal_genescore(
+        seurat_obj = dat,
+        geneset = geneset[[i]], 
+        background = round(length(geneset[[i]])),
+        name = names(geneset[i])
+    ) 
+    dat <- cal_entropy(
+        seurat_obj = dat,
+        geneset = geneset[[i]],
+        background = round(length(geneset[[i]])),
+        name = names(geneset[i])
+    )
+    dat <- cal_entropy(
+        seurat_obj = dat,
+        geneset = geneset[[i]], 
+        background = round(length(geneset[[i]]) / 3),
+        name = paste0(names(geneset[i]), 2)
+    ) 
+}
+# dat@meta.data %>% head
+# cor(dat@meta.data$ori_win, dat@meta.data$old_win_genescore)
+# cor(dat@meta.data$ori_win, dat@meta.data$win_genescore)
+# cor(dat@meta.data$win_genescore, dat@meta.data$win_entropy, use = "complete")
+# plot(dat@meta.data$win_genescore, dat@meta.data$win_entropy)
+
+# cor(dat@meta.data$win_entropy, dat@meta.data$win2_entropy, use = "complete")
+# plot(dat@meta.data$win_entropy, dat@meta.data$win2_entropy)
+
+
+# genescore diff values 
 scaling <- 1
 dat@meta.data <- dat@meta.data %>%
-    mutate(winlose_diff = (win - lose) / scaling) %>%
-    mutate(proapop_diff = (proliferation_plos - apoptosis_msigdbhallmark) / scaling) %>%
-    mutate(winapop_diff = (win - apoptosis_msigdbhallmark) / scaling) %>% 
-    mutate(winloseapop_diff = (win - apoptosis_msigdbhallmark - lose) / scaling)
+    mutate(winlose_diff = (win_genescore - lose_genescore) / scaling) %>%
+    mutate(proapop_diff = (proliferation_plos_genescore - apoptosis_msigdbhallmark_genescore) / scaling) %>%
+    mutate(winapop_diff = (win_genescore - apoptosis_msigdbhallmark_genescore) / scaling) %>% 
+    mutate(winloseapop_diff = (win_genescore - apoptosis_msigdbhallmark_genescore - lose_genescore) / scaling)
 
 # ratio value from Patric
 res_cal_ratio <- cal_ratio(dat@assays$RNA@data, geneset$win, geneset$lose)
@@ -157,20 +151,7 @@ dat@meta.data <- dat@meta.data %>%
     mutate(breaks_ratio = res_cal_ratio$breaks)
 
 
-# 4. cal entropy
-# we focued on the normalized data
-exp <- GetAssayData(dat)
-
-# cal entropy
-i <- 1
-for (i in seq_len(length(geneset))) {
-    print(i)
-    sel_exp <- as.data.frame(exp)[geneset[[i]], ]
-    entropy <- cal_entropy_freq(sel_exp)
-    dat@meta.data[str_glue(names(geneset)[i], "_entropy")] <- entropy
-}
-
-# diff values 
+# entropy diff values 
 dat@meta.data <- dat@meta.data %>%
     mutate(winlose_diff_entropy = (win_entropy - lose_entropy) / scaling) %>%
     mutate(proapop_diff_entropy = (proliferation_plos_entropy - apoptosis_msigdbhallmark_entropy) / scaling) %>%
