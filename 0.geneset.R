@@ -43,8 +43,8 @@ convert_human_to_mouse <- function(gene_list) {
 #################################################################
 
 rawcompgene <- openxlsx::read.xlsx("data/comp_gene.xlsx")
-win_mouse <- rawcompgene %>% filter(type == "win") %>% select(mouse_sym) %>% pull %>% sort
-lose_mouse <- rawcompgene %>% filter(type == "lose") %>% select(mouse_sym) %>% pull %>% sort
+(win_mouse <- rawcompgene %>% filter(type == "win") %>% select(mouse_sym) %>% pull() %>% sort())
+(lose_mouse <- rawcompgene %>% filter(type == "lose") %>% select(mouse_sym) %>% pull %>% sort)
 writeLines(win_mouse, "data/win_mouse.txt")
 writeLines(lose_mouse, "data/lose_mouse.txt")
 
@@ -133,7 +133,76 @@ haploinsufficiency_gene %>% ll
 haploinsufficiency_mouse <- convert_human_to_mouse(haploinsufficiency_gene)[, 2] %>% unique %>% sort
 writeLines(haploinsufficiency_mouse, "data/haploinsufficiency_mouse.txt")
 
+#######################################################################
+### save analysis genesets ############################################
+#######################################################################
 
+files <- c(
+    "win_mouse.txt", "lose_mouse.txt",
+    "proliferation_mouse_moscot.txt", 
+    # "apoptosis_mouse_moscot.txt",
+    "proliferation_mouse_plos.txt", "apoptosis_mouse_msigdbhallmark.txt",
+    "essential_mouse_all.txt", "essential_mouse_both.txt",
+    "haploinsufficiency_mouse.txt"
+)
+names_files <- c(
+    "win", "lose",
+    "proliferation_moscot", 
+    # "apoptosis_moscot",
+    "proliferation_plos", "apoptosis_msigdbhallmark",
+    "essential_all", "essential_both",
+    "haploinsufficiency"
+)
+
+genesets <- lapply(seq_len(length(files)), function(i) {
+    readLines(str_glue("data/{files[i]}"))
+})
+names(genesets) <- names_files
+
+mh <- qusage::read.gmt("~/tools/msigdb/msigdb_v2023.1.Mm_files_to_download_locally/msigdb_v2023.1.Mm_GMTs/mh.all.v2023.1.Mm.symbols.gmt")
+mh$HALLMARK_APOPTOSIS %>% sort
+# library(msigdbr)
+# mhDF <- msigdbr("mouse", category = "H")
+# new_mh <- split(as.character(mhDF$gene_symbol), mhDF$gs_name)
+# all.equal(sort(new_mh$HALLMARK_APOPTOSIS), sort(mh$HALLMARK_APOPTOSIS))
+
+allgenesets <- append(genesets, mh)
+names(allgenesets)
+
+saveRDS(allgenesets, "data/allgenesets.rds")
+
+# sub set of msigdb
+sel_hallmark <- c(
+    "HALLMARK_P53_PATHWAY",
+    "HALLMARK_MTORC1_SIGNALING",
+    "HALLMARK_MYC_TARGETS_V1", 
+    "HALLMARK_MYC_TARGETS_V2", 
+    "HALLMARK_E2F_TARGETS", 
+    "HALLMARK_KRAS_SIGNALING_UP", 
+    "HALLMARK_KRAS_SIGNALING_DN",
+    "HALLMARK_WNT_BETA_CATENIN_SIGNALING",
+    "HALLMARK_IL6_JAK_STAT3_SIGNALING"
+)
+
+genesets <- append(genesets, mh[names(mh) %in% sel_hallmark])
+names(genesets)
+
+saveRDS(genesets, "data/genesets.rds")
+
+
+#######################################################################
+#######################################################################
+#######################################################################
+
+intersect(mh$HALLMARK_MYC_TARGETS_V1, mh$HALLMARK_MYC_TARGETS_V2) %>% ll
+mh$HALLMARK_MYC_TARGETS_V1 %>% ll
+mh$HALLMARK_MYC_TARGETS_V2 %>% ll
+
+writeLines(mh$HALLMARK_MYC_TARGETS_V1, "data/mouseHALLMARK_MYC_TARGETS_V1")
+writeLines(mh$HALLMARK_MYC_TARGETS_V2, "data/mouseHALLMARK_MYC_TARGETS_V2")
+
+genesets <- readRDS("data/genesets.rds")
+lapply(genesets, length)
 
 # seuratObject <- LoadH5Seurat("data/fromweb/E11.5_E1S3.MOSTA.h5seurat")
 # seuratObject  %>% str

@@ -86,13 +86,13 @@ dat
 
 # 3. cal gene score and entropy
 # 3-1. cal gene score using comp gene and hallmark
-
-geneset <- readRDS("data/genesets.rds")[1:2]
+geneset <- readRDS("data/genesets.rds")
 for (i in seq_len(length(geneset))) {
     dat <- AddModuleScore(
         dat,
         features = geneset[i], 
-        ctrl = length(geneset[[i]]) / 3, 
+        # ctrl = length(geneset[[i]]) / 3, 
+        ctrl = length(geneset[[i]]), 
         name = paste0("ori_", names(geneset[i]))
     ) 
 }
@@ -100,31 +100,33 @@ colnames(dat@meta.data) <- sub("(.*)1$", "\\1", colnames(dat@meta.data))
 
 # 3-2. cal entropy
 for (i in seq_len(length(geneset))) {
-
-    dat <- oldcal_genescore(
-        seurat_obj = dat,
-        geneset = geneset[[i]], 
-        background = round(length(geneset[[i]]) / 3),
-        name = paste0("old_", names(geneset[i]))
-    ) 
+    print(i)
+    # dat <- oldcal_genescore(
+    #     seurat_obj = dat,
+    #     geneset = geneset[[i]], 
+    #     background = round(length(geneset[[i]]) / 3),
+    #     name = paste0("old_", names(geneset[i]))
+    # ) 
     dat <- cal_genescore(
         seurat_obj = dat,
         geneset = geneset[[i]], 
-        background = round(length(geneset[[i]])),
-        name = names(geneset[i])
+        background = length(geneset[[i]]),
+        name = names(geneset[i]),
+        rawgenescore = TRUE
     ) 
     dat <- cal_entropy(
         seurat_obj = dat,
         geneset = geneset[[i]],
-        background = round(length(geneset[[i]])),
-        name = names(geneset[i])
+        background = length(geneset[[i]]),
+        name = names(geneset[i]),
+        rawgentropy = TRUE
     )
-    dat <- cal_entropy(
-        seurat_obj = dat,
-        geneset = geneset[[i]], 
-        background = round(length(geneset[[i]]) / 3),
-        name = paste0(names(geneset[i]), 2)
-    ) 
+    # dat <- cal_entropy(
+    #     seurat_obj = dat,
+    #     geneset = geneset[[i]], 
+    #     background = round(length(geneset[[i]]) / 3),
+    #     name = paste0(names(geneset[i]), 2)
+    # ) 
 }
 # dat@meta.data %>% head
 # cor(dat@meta.data$ori_win, dat@meta.data$old_win_genescore)
@@ -139,10 +141,11 @@ for (i in seq_len(length(geneset))) {
 # genescore diff values 
 scaling <- 1
 dat@meta.data <- dat@meta.data %>%
-    mutate(winlose_diff = (win_genescore - lose_genescore) / scaling) %>%
-    mutate(proapop_diff = (proliferation_plos_genescore - apoptosis_msigdbhallmark_genescore) / scaling) %>%
-    mutate(winapop_diff = (win_genescore - apoptosis_msigdbhallmark_genescore) / scaling) %>% 
-    mutate(winloseapop_diff = (win_genescore - apoptosis_msigdbhallmark_genescore - lose_genescore) / scaling)
+    mutate(winlose_diff_genescore = (win_genescore - lose_genescore) / scaling) %>%
+    mutate(proapop_diff_genescore = (proliferation_plos_genescore - apoptosis_msigdbhallmark_genescore) / scaling) %>%
+    mutate(winapop_diff_genescore = (win_genescore - apoptosis_msigdbhallmark_genescore) / scaling) %>% 
+    mutate(winloseapop_diff_genescore = (win_genescore - apoptosis_msigdbhallmark_genescore - lose_genescore) / scaling)
+
 
 # ratio value from Patric
 res_cal_ratio <- cal_ratio(dat@assays$RNA@data, geneset$win, geneset$lose)

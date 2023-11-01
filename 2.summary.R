@@ -1,105 +1,162 @@
 rm(list = ls())
 library(tidyverse)
-library(magrittr)
 library(data.table)
 
 library(jjutil)
 library(Seurat)
 
+#######################################################################
+### resutls summary ###################################################
+#######################################################################
 
-# cal_ratio function from Patrick
-cal_ratio <- function(norm_counts, win, lose) {
-    weight <- rep(1, length(c(win, lose)))
-    names(weight) <- c(win, lose)
-    
-    # weight for more important genes
-    weight[names(weight) %in% c("Myc", "Mycn", "Ras", "Egfr")] <- 2
-    weight[names(weight) == "Cacfd"] <- 3
+allfiles <- list.files("data/renormalized", pattern = "csv")
 
-    win_counts <- norm_counts[rownames(norm_counts) %in% win, ]
-    win_counts %>% dim
-    lose_counts <- norm_counts[rownames(norm_counts) %in% lose, ]
-    lose_counts %>% dim
-
-    for (i in seq_along(weight)) {
-        if (names(weight)[i] %in% rownames(win_counts)) {
-            win_counts[rownames(win_counts) == names(weight)[i], ] <- win_counts[rownames(win_counts) == names(weight)[i], ] * weight[i]
-        } else if (names(weight)[i] %in% rownames(lose_counts)) {
-            lose_counts[rownames(lose_counts) == names(weight)[i], ] <- lose_counts[rownames(lose_counts) == names(weight)[i], ] * weight[i]
-        } else {
-            next
-        }
-    }
-
-    win_counts <- colMeans(win_counts)
-    lose_counts <- colMeans(lose_counts)
-
-    ratio <- (win_counts + 1) / (lose_counts + 1) - 1 # NOTE!!!! any reference?? or related papers? -> NO!
-    breaks <- cut(ratio, breaks = 7, include.lowest = TRUE)
-    return(list(ratio = ratio, breaks = breaks))
-}
-
-#############################################################################
-#############################################################################
-#############################################################################
-
-allfiles <- list.files("data/renormalized", pattern = "MOSTA")
-# allfiles <- allfiles[1:2]
-
-win <- readLines("data/win_mouse.txt")
-lose <- readLines("data/lose_mouse.txt")
-
-summary_mosta <- lapply(allfiles, function(sel) {
-    
-    #sel <- "E9.5_E1S1.MOSTA_renormalized.h5ad"
+raw_summary_mosta <- pbmcapply::pbmclapply(allfiles, function(sel) {
     cat(sel, "\n")
-        
-    # There is a erro when we use LoadH5Seurat function in SeuratDisk (https://github.com/mojaveazure/seurat-disk/issues/109)
-    # So, we directly read the scanpy output (i.e., h5ad) using anndata::read_h5ad.
-    dat <- anndata::read_h5ad(str_glue("data/renormalized/{sel}"))
+    fread(str_glue("data/renormalized/{sel}"))
+}, mc.cores = 25) %>% rbindlist
 
-
-    # 1. exp data 
-    norm_counts <- dat$X %>% as.matrix %>% t
-    res_cal_ratio <- cal_ratio(norm_counts, win, lose)
-
-
-    # 2. coord data
-    coord <- dat$obsm$spatial %>% as.data.frame %>% 
-        set_colnames(c("x", "y")) %>% 
-        #mutate(x = as.integer(x)) %>% 
-        #mutate(y = as.integer(abs(y))) %>% 
-        mutate(cell_name = rownames(dat$obs)) %>% 
-        select(cell_name, everything()) %>% as_tibble() %>% 
-
-        mutate(ratio = res_cal_ratio$ratio) %>% 
-        mutate(breaks_ratio = res_cal_ratio$breaks)
-
-
-    # 3. meta data
-    # set names
-    tmp <- unlist(strsplit(sel, "_"))
-    timepoint <- tmp[1]
-    time <- sub("E", "", timepoint) %>% as.numeric
-    section <- sub(".MOSTA", "", tmp[2])
-
-    meta <- dat$obs %>% 
-        select(annotation, starts_with(c("win", "lose", "proliferation", "apoptosis", "essential", "haploinsufficiency"))) %>% 
-        rownames_to_column("cell_name") %>% 
-        mutate(timepoint = timepoint) %>% 
-        mutate(time = time) %>%
-        mutate(section = section) %>%
-        select(cell_name, timepoint, time, section, everything()) %>% as_tibble()
-
-    res <- inner_join(coord, meta, by = "cell_name")
-    res
-}) %>% rbindlist()
-
-summary_mosta <- summary_mosta %>% 
-    mutate(timepoint = factor(timepoint, levels = c("E9.5", "E10.5", "E11.5", "E12.5", "E13.5", "E14.5", "E15.5", "E16.5"))) %>% 
+summary_mosta <- raw_summary_mosta %>%
+    mutate(timepoint = factor(timepoint, levels = c("E9.5", "E10.5", "E11.5", "E12.5", "E13.5", "E14.5", "E15.5", "E16.5"))) %>%
     mutate(breaks_ratio = factor(breaks_ratio)) %>% 
     mutate(annotation = factor(annotation)) %>% 
     mutate(breaks_ratio = cut(ratio, breaks = 7, include.lowest = TRUE)) %>% 
     arrange(time) %>% as_tibble
+   
+#######################################################################
+### genescroe * entropy = new #########################################
+#######################################################################
 
-saveRDS(summary_mosta, "res/summary_mosta.rds")
+idx_1 <- grep("_genescore", colnames(summary_mosta)) #, value = TRUE)
+idx_2 <- grep("_entropy", colnames(summary_mosta)) # , value = TRUE)
+newnames <- sub("(.*)_genescore", "\\1_new", grep("_genescore", colnames(summary_mosta), value = TRUE))
+
+new <- lapply(seq_len(ll(idx_1)), function(i) {
+    print(i)
+    sel_idx_1 <- idx_1[i]
+    sel_idx_2 <- idx_2[i]
+    data.frame(summary_mosta[, sel_idx_1] * summary_mosta[, sel_idx_2])
+})
+new <- do.call(cbind.data.frame, new)
+colnames(new) <- newnames
+
+new$winlose_diff_new <- (summary_mosta$win_genescore - summary_mosta$lose_genescore) *
+    (summary_mosta$win_entropy - summary_mosta$lose_entropy)
+
+new$proapop_diff_new <- (summary_mosta$proliferation_plos_genescore - summary_mosta$apoptosis_msigdbhallmark_genescore) *
+    (summary_mosta$proliferation_plos_entropy - summary_mosta$apoptosis_msigdbhallmark_entropy)
+
+# new %>%
+#     cor(use = "complete.obs") %>%
+#     ggcorrplot::ggcorrplot(lab = TRUE)
+
+#######################################################################
+### ori_genescroe * raw_entropy = new2 ################################
+#######################################################################
+
+idx_1 <- grep("ori_", colnames(summary_mosta), value = TRUE)
+idx_2 <- grep("_rawentropy", colnames(summary_mosta), value = TRUE)
+newnames <- sub("(.*)_rawentropy", "\\1_new2", grep("_rawentropy", colnames(summary_mosta), value = TRUE))
+
+new2 <- lapply(seq_len(ll(idx_1)), function(i) {
+    print(i)
+    sel_idx_1 <- idx_1[i]
+    sel_idx_2 <- idx_2[i]
+    data.frame(summary_mosta[, sel_idx_1] * summary_mosta[, sel_idx_2])
+})
+new2 <- do.call(cbind.data.frame, new2)
+colnames(new2) <- newnames
+
+new2$winlose_diff_new2 <- (summary_mosta$ori_win - summary_mosta$ori_lose) *
+    (summary_mosta$win_rawentropy - summary_mosta$lose_rawentropy)
+
+new2$proapop_diff_new2 <- (summary_mosta$ori_proliferation_plos - summary_mosta$ori_apoptosis_msigdbhallmark) *
+    (summary_mosta$proliferation_plos_rawentropy - summary_mosta$apoptosis_msigdbhallmark_rawentropy)
+
+new2$winapop_diff_new2 <- (summary_mosta$ori_win - summary_mosta$ori_apoptosis_msigdbhallmark) *
+    (summary_mosta$win_rawentropy - summary_mosta$apoptosis_msigdbhallmark_rawentropy)
+
+new2$winloseapop_diff_new2 <- (summary_mosta$ori_win - summary_mosta$ori_lose - summary_mosta$ori_apoptosis_msigdbhallmark) *
+    (summary_mosta$win_rawentropy - summary_mosta$lose_rawentropy - summary_mosta$apoptosis_msigdbhallmark_rawentropy)
+
+# new2 %>%
+#     cor(use = "complete.obs") %>%
+#     ggcorrplot::ggcorrplot(lab = TRUE)
+
+new_summary_mosta <- cbind(summary_mosta, new, new2)
+colnames(new_summary_mosta)
+
+
+# The "cell_name" column should use x and y cordinate.
+# NOTE!! There is a some extra naming in E15.5 (e.g., "_HC21_E15.5_main"), so remove.
+# cell_name = "newy"_"newx"-"timepoint"-"section"
+new_summary_mosta <- new_summary_mosta %>%
+    mutate(cell_name = sub("_HC21_E15.5_main", "", cell_name)) %>%
+    separate(cell_name, c("newy", "newx"), sep = "_", convert = TRUE, remove = FALSE) %>%
+    mutate(cell_name = str_glue("{newy}_{newx}-{timepoint}-{section}"))    
+
+saveRDS(new_summary_mosta, "res/summary_mosta.rds")
+
+
+#######################################################################
+### check data ########################################################
+#######################################################################
+
+summary_mosta %>%
+    select("timepoint", "section") %>%
+    unique.data.frame() %>%
+    group_by(timepoint) %>%
+    count()
+# timepoint `sum(n)`
+# <fct>        <int>
+# 1 E9.5             5
+# 2 E10.5            4
+# 3 E11.5            4
+# 4 E12.5            6
+# 5 E13.5            4
+# 6 E14.5            7
+# 7 E15.5            5
+# 8 E16.5           18
+
+summary_mosta %>%
+    select("timepoint", "section") %>%
+    unique.data.frame() %>%
+    group_by(timepoint) %>%
+    count() %>%
+    ungroup() %>%
+    summarise(sum(n))
+# a total 53 section across 8 timepoints
+
+summary_mosta$annotation %>% unique %>% ll
+# 49 annotation
+
+
+# #######################################################################
+# ### check coord and annotation ########################################
+# #######################################################################
+sel <- "E9.5"
+for (sel in levels(summary_mosta$timepoint)) {
+    cat(sel, "\n")
+    ggori <- summary_mosta %>% filter(timepoint == sel) %>%
+        ggplot(aes(x, y, col = annotation)) +
+        geom_point(size = 0.5) +
+        theme_bw() +
+        facet_wrap(~section, scales = "free", nrow = 1)
+
+  
+    ggnew <- summary_mosta %>% filter(timepoint == sel) %>% 
+        ggplot(aes(newx, newy, col = annotation)) +
+        geom_point(size = 0.5) +
+        theme_bw() +
+        facet_wrap(~section, scales = "free", nrow = 1)
+  
+    cowplot::plot_grid(ggori, ggnew, nrow = 2)
+
+    if (sel == "E16.5") {
+        ggsave(filename = paste0("fig/check/", sel, ".png"), width = 60, height = 10, units = "in", limitsize = FALSE)    
+    } else if (sel == "E9.5") {
+        ggsave(filename = paste0("fig/check/", sel, ".png"), width = 20, height = 10, units = "in", limitsize = FALSE)    
+    }else {
+        ggsave(filename = paste0("fig/check/", sel, ".png"), width = 30, height = 10, units = "in", limitsize = FALSE)
+    }
+}
